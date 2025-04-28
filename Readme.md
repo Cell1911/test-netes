@@ -14,7 +14,6 @@ kubernetes-html-app/
 │   └── templates/
 │       └── index.html
 ├── Dockerfile
-├── deployment.yaml
 └── README.md
 ```
 
