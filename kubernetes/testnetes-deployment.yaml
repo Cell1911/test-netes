@@ -16,7 +16,7 @@ spec:
       - name: web
         image: celestialaghori/testnetes:latest
         ports:
-        - containerPort: 5000
+        - containerPort: 5000  # Must match Gunicorn port
         env:
         - name: REDIS_URL
           value: "redis://redis-service:6379"
@@ -27,4 +27,5 @@ spec:
               key: postgres-url
         - name: FLASK_ENV
           value: "production"
-
+        - name: FLASK_APP
+          value: "app.app"
