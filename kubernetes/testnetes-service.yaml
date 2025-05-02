@@ -8,6 +8,5 @@ spec:
     app: testnetes
   ports:
     - protocol: TCP
-      port: 80       # External port
-      targetPort: 5000  # Must match containerPort
-
+      port: 80
+      targetPort: 5000  # Matches Gunicorn port
