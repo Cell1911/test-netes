@@ -1,5 +1,4 @@
-aws_access_key = "AKIAVRUVWM3X7NKXSYEE"
-aws_secret_key = "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"
+
 aws_region = "us-east-1"
 ami_id     = "ami-07b7f66b629de9364"
 key_name   = "my-key"
