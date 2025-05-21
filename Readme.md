@@ -1,125 +1,47 @@
-# Kubernetes HTML App with Docker and Python Flask
 
-This project demonstrates how to create a simple, responsive web application using **Python Flask**, **SQLite**, **Bootstrap**, and **Docker**, and how to push the Docker image to **Docker Hub** for further deployment.
+## A containerized Python web app that uses Redis and PostgreSQL, deployed to a Kubernetes cluster. The infrastructure is provisioned with Terraform on AWS, and the app is deployed using `kind` and `kubectl`.
 
----
+test-netes-main/
+├── app/ # Python web app with Flask
+│ ├── app.py
+│ ├── requirements.txt
+│ └── templates/
+│ └── index.html
+├── kubernetes/ # Kubernetes manifests
+│ ├── db-secret.yaml
+│ ├── postgres-deployment.yaml
+│ ├── postgres-pvc.yaml
+│ ├── postgres-service.yaml
+│ ├── redis-deployment.yaml
+│ ├── redis-service.yaml
+│ ├── testnetes-deployment.yaml
+│ └── testnetes-service.yaml
+├── terraform/ # Infrastructure as Code for AWS
+│ ├── main.tf
+│ ├── variables.tf
+│ ├── output.tf
+│ ├── terraform.tfvars
+│ ├── install.sh # Script to install Docker, Kind, kubectl on EC2
+│ └── my-key.pem # SSH private key (do not expose publicly)
+├── Dockerfile # Docker image for the app
+├── docker-compose.yml # Optional local Docker test setup
+├── .env # Environment variables for local use
+└── install.sh # Global setup script
 
-## 📦 Project Structure
+Ensure the following tools are installed **locally**:
 
-```
-kubernetes-html-app/
-├── app/
-│   ├── app.py
-│   ├── requirements.txt
-│   └── templates/
-│       └── index.html
-├── Dockerfile
-└── README.md
-```
+- Docker
+- kubectl
+- Kind
+- Terraform
+- AWS CLI (configured)
+- A valid EC2 key pair (`.pem`)
 
----
-
-## Application Files
-
-### 1. `app.py`
-
-Python Flask application serving an HTML page.
-- Connects to a lightweight SQLite database.
-- Tracks page visit counts.
-
-```python
-from flask import Flask, render_template
-import sqlite3
-
-app = Flask(__name__)
-
-def init_db():
-    conn = sqlite3.connect('data.db')
-    c = conn.cursor()
-    c.execute('CREATE TABLE IF NOT EXISTS visits (count INTEGER)')
-    c.execute('INSERT INTO visits (count) SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM visits)')
-    conn.commit()
-    conn.close()
-
-@app.route('/')
-def home():
-    conn = sqlite3.connect('data.db')
-    c = conn.cursor()
-    c.execute('UPDATE visits SET count = count + 1')
-    conn.commit()
-    c.execute('SELECT count FROM visits')
-    visit_count = c.fetchone()[0]
-    conn.close()
-    return render_template('index.html', visits=visit_count)
-
-if __name__ == '__main__':
-    init_db()
-    app.run(host='0.0.0.0', port=80)
-```
-
-### 2. `templates/index.html`
-
-Responsive HTML page using Bootstrap 5.
-- Displays visit counter dynamically.
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kubernetes Networking</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-  <div class="container text-center mt-5">
-    <h1 class="mb-4">Connecting Applications with Services</h1>
-    <h2 class="text-primary mb-3">The Kubernetes model for connecting containers</h2>
-    <p class="lead">
-      Now that you have a continuously running, replicated application you can expose it on a network.
-    </p>
-    <div class="alert alert-info mt-5">
-      Page visited {{ visits }} times
-    </div>
-  </div>
-</body>
-</html>
-```
-
-### 3. `requirements.txt`
-
-Python dependencies:
-
-```
-flask
-```
-
-(SQLite3 is built into Python — no need to install separately.)
-
----
-
-Step 2: Create Dockerfile
-
-Create a `Dockerfile` at the root of your project:
-
-```Dockerfile
-FROM python:3.10-slim
-WORKDIR /app
-COPY app/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY app/ .
-EXPOSE 80
-CMD ["python", "app.py"]
-```
-
----
-
-Step 3: Build and Push Docker Image to Docker Hub
 
 ### 1. Build Docker Image
 
 ```bash
-docker build -t kubernetes-html-app .
+docker build -t testnetes .
 ```
 
 ### 2. Login to Docker Hub
@@ -140,7 +62,81 @@ docker tag kubernetes-html-app yourdockerhubusername/kubernetes-html-app:latest
 ### 4. Push Docker Image
 
 ```bash
+
+
 docker push yourdockerhubusername/kubernetes-html-app:latest
 ```
+
+Once done with docker we can now build the architecture for our deployment, so we will be using ***terraform*** here 
+
+
+### 1. Go inside Terraform directory
+
+```bash
+cd terraform
+```
+
+### 1. Initiliaze terraform
+
+```bash
+terraform init
+```
+
+### 3. all the configurations are for t3.xlarge because we need a machine with maximum CPU capacity to deploy minikube/kind cluster
+
+```bash
+terraform plan
+```
+
+### 4. Once you can see the required architecure provided by plan stage is valid then you can apply the plan
+
+```bash
+terraform apply
+```
+
+This sets up:
+
+A custom VPC
+
+A security group with open ports
+
+An EC2 instance with public IP and SSH access
+
+## now you can copy this repo on your instance and then
+
+## Create Kubernetes Cluster with Kind
+```bash
+kind create cluster --name testnetes
+```
+
+## Deply to kubernetes 
+```bash
+kubectl apply -f kubernetes/db-secret.yaml
+kubectl apply -f kubernetes/postgres-pvc.yaml
+kubectl apply -f kubernetes/postgres-deployment.yaml
+kubectl apply -f kubernetes/postgres-service.yaml
+kubectl apply -f kubernetes/redis-deployment.yaml
+kubectl apply -f kubernetes/redis-service.yaml
+kubectl apply -f kubernetes/testnetes-deployment.yaml
+kubectl apply -f kubernetes/testnetes-service.yaml
+```bash
+
+## Test the Application
+
+kubectl get pods
+kubectl get svc
+
+# Port-forward the app
+kubectl port-forward svc/testnetes-service 5000:5000
+
+
+## Clean-up
+
+# From EC2
+kind delete cluster --name testnetes
+
+# From your machine
+cd terraform
+terraform destroy
 
 
